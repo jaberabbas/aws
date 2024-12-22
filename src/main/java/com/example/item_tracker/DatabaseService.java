@@ -6,6 +6,7 @@ package com.example.item_tracker;
 
 import com.google.gson.Gson;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -27,18 +28,21 @@ import java.util.UUID;
 @Component
 public class DatabaseService {
 
+
     private SecretsManagerClient getSecretClient() {
         Region region = Region.EU_WEST_3;
         return SecretsManagerClient.builder()
                 .region(region)
-                .credentialsProvider(ProfileCredentialsProvider.create())
+                //.credentialsProvider(ProfileCredentialsProvider.create())// for local credentials only
+                .credentialsProvider(DefaultCredentialsProvider.create()) // Automatically uses appropriate credentials
                 .build();
     }
+
 
     private String getSecretValues() {
         // Get the Amazon RDS creds from Secrets Manager.
         SecretsManagerClient secretClient = getSecretClient();
-        String secretName = "dev/sql/connectstr";
+        String secretName = "dev/postgres/connection";
 
         GetSecretValueRequest valueRequest = GetSecretValueRequest.builder()
                 .secretId(secretName)
@@ -81,6 +85,7 @@ public class DatabaseService {
         // Get the Amazon RDS credentials from AWS Secrets Manager.
         Gson gson = new Gson();
         User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
+        System.out.println("username: " + user.getUsername() + " pass: " +user.getPassword() + " host: " + user.getHost());
         try {
             c = ConnectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             ResultSet rs = null;
@@ -140,6 +145,8 @@ public class DatabaseService {
         // Get the Amazon RDS credentials from AWS Secrets Manager.
         Gson gson = new Gson();
         User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
+        System.out.println("username: " + user.getUsername() + " pass: " +user.getPassword() + " host: " + user.getHost());
+
         try {
             c = ConnectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             PreparedStatement ps;
