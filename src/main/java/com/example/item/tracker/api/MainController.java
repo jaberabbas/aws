@@ -1,8 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-package com.example.item_tracker;
+package com.example.item.tracker.api;
 
+import com.example.item.tracker.component.DatabaseService;
+import com.example.item.tracker.model.WorkItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -32,15 +35,12 @@ public class MainController {
 
     @GetMapping("")
     public List<WorkItem> getItems(@RequestParam(required = false) String archived) {
-        System.out.println("archived: " + archived);
         Iterable<WorkItem> result;
         if (archived != null && archived.trim().equalsIgnoreCase("false")) {
             result = dbService.getItemsDataSQLReport(0);
-        }
-        else if (archived != null && archived.trim().equalsIgnoreCase("true")) {
+        } else if (archived != null && archived.trim().equalsIgnoreCase("true")) {
             result = dbService.getItemsDataSQLReport(1);
-        }
-        else {
+        } else {
             result = dbService.getItemsDataSQLReport(-1);
         }
 

@@ -1,17 +1,17 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
 
-package com.example.item_tracker;
+package com.example.item.tracker.component;
 
-
+import com.example.item.tracker.model.User;
+import com.example.item.tracker.model.WorkItem;
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -23,21 +23,24 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 
+@Slf4j
 @Component
 public class DatabaseService {
 
+    private final ConnectionHelper connectionHelper;
+
+    public DatabaseService(ConnectionHelper connectionHelper) {
+        this.connectionHelper = connectionHelper;
+    }
 
     private SecretsManagerClient getSecretClient() {
         Region region = Region.EU_WEST_3;
         return SecretsManagerClient.builder()
                 .region(region)
-                //.credentialsProvider(ProfileCredentialsProvider.create())// for local credentials only
                 .credentialsProvider(DefaultCredentialsProvider.create()) // Automatically uses appropriate credentials
                 .build();
     }
-
 
     private String getSecretValues() {
         // Get the Amazon RDS creds from Secrets Manager.
@@ -60,7 +63,7 @@ public class DatabaseService {
         Gson gson = new Gson();
         User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
         try {
-            c = ConnectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
+            c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             query = "update work set archive = ? where idwork ='" + id + "' ";
             assert c != null;
             PreparedStatement updateForm = c.prepareStatement(query);
@@ -68,9 +71,9 @@ public class DatabaseService {
             updateForm.execute();
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("flipItemArchive failed. Error: {}", e.getMessage());
         } finally {
-            ConnectionHelper.close(c);
+            connectionHelper.close(c);
         }
     }
 
@@ -85,9 +88,8 @@ public class DatabaseService {
         // Get the Amazon RDS credentials from AWS Secrets Manager.
         Gson gson = new Gson();
         User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
-        System.out.println("username: " + user.getUsername() + " pass: " +user.getPassword() + " host: " + user.getHost());
         try {
-            c = ConnectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
+            c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             ResultSet rs = null;
             PreparedStatement pstmt = null;
             if (flag == 0) {
@@ -132,9 +134,9 @@ public class DatabaseService {
             return itemList;
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("getItemsDataSQLReport failed. Error: {}", e.getMessage());
         } finally {
-            ConnectionHelper.close(c);
+            connectionHelper.close(c);
         }
         return null;
     }
@@ -145,10 +147,9 @@ public class DatabaseService {
         // Get the Amazon RDS credentials from AWS Secrets Manager.
         Gson gson = new Gson();
         User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
-        System.out.println("username: " + user.getUsername() + " pass: " +user.getPassword() + " host: " + user.getHost());
 
         try {
-            c = ConnectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
+            c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             PreparedStatement ps;
 
             // Convert rev to int.
@@ -156,10 +157,6 @@ public class DatabaseService {
             String guide = item.getGuide();
             String description = item.getDescription();
             String status = item.getStatus();
-
-            // Generate the work item ID.
-            UUID uuid = UUID.randomUUID();
-            String workId = uuid.toString();
 
             // Date conversion.
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
@@ -180,11 +177,10 @@ public class DatabaseService {
             ps.setString(5, status);
             ps.setInt(6, 0);
             ps.execute();
-            System.out.println("insert new item was successful");
         } catch (SQLException | ParseException e) {
-            System.out.println("inject new item failed: " + e.getMessage());
+            log.error("inject new item failed. Error: {}", e.getMessage());
         } finally {
-            ConnectionHelper.close(c);
+            connectionHelper.close(c);
         }
     }
 }

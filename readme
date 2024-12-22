@@ -1,0 +1,50 @@
+
+This projects works
+    -it works when deployed on AWS
+    -it works locally by connecting to AWS (secret manager, PostgreSQL DB, SES email)
+
+To run it, you will need to do the below:
+-create RDS, postgreSQL DB
+    -free tier
+    -make public IP
+    -add Security Group
+        -add your IP as Inbound
+-get the connection details. You will save them in Security Manager later
+
+-postgress table creation:
+
+CREATE TABLE Work (
+    idwork SERIAL PRIMARY KEY,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(400),
+    guide VARCHAR(45),
+	status VARCHAR(400),
+	username VARCHAR(45),
+	archive SMALLINT
+);
+
+-create secret using Secret Manager
+    -username: from the above DB connection
+    -password: from the above DB connection
+    -host: from the above DB connection
+ -add name to the DB: dev/postgres/connection (you will use this in Java code)
+
+-deploy it on Beanstalk
+-create new Beanstalk application
+-choose upload from file
+-select the jar file from target folder of this project
+-use the same security group of the DB (if possible)
+-make the IP access public
+-add the credentials to the environment (check the aws/cred.txt file)
+AWS_ACCESS_KEY_ID:
+AWS_SECRET_ACCESS_KEY:
+SERVER_PORT=5000
+
+-add your email using Simple Email Service SES, Identity
+-test now using soapui project and it should work
+    -get to get list if items
+    -post to add new item
+    -put to archive an item
+    -post to report the sheet. You should receive the email on the verified email saved in SES
+
+
