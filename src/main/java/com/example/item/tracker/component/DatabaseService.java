@@ -1,6 +1,8 @@
 
 package com.example.item.tracker.component;
 
+import com.example.item.tracker.model.CustomException;
+import com.example.item.tracker.model.ErrorCodes;
 import com.example.item.tracker.model.User;
 import com.example.item.tracker.model.WorkItem;
 import com.google.gson.Gson;
@@ -56,7 +58,7 @@ public class DatabaseService {
     }
 
     // Set the specified item to archive.
-    public void flipItemArchive(String id) {
+    public void flipItemArchive(String id) throws CustomException {
         Connection c = null;
         String query;
         // Get the Amazon RDS credentials from AWS Secrets Manager.
@@ -72,13 +74,14 @@ public class DatabaseService {
 
         } catch (SQLException e) {
             log.error("flipItemArchive failed. Error: {}", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "flipItemArchive failed: ", e.getMessage());
         } finally {
             connectionHelper.close(c);
         }
     }
 
     // Get Items data from postgress.
-    public List<WorkItem> getItemsDataSQLReport(int flag) {
+    public List<WorkItem> getItemsDataSQLReport(int flag) throws CustomException {
         Connection c = null;
         List<WorkItem> itemList = new ArrayList<>();
         String query;
@@ -135,14 +138,14 @@ public class DatabaseService {
 
         } catch (SQLException e) {
             log.error("getItemsDataSQLReport failed. Error: {}", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "getItemsDataSQLReport failed: ", e.getMessage());
         } finally {
             connectionHelper.close(c);
         }
-        return null;
     }
 
     // Inject a new submission.
-    public void injectNewSubmission(WorkItem item) {
+    public void injectNewSubmission(WorkItem item) throws CustomException {
         Connection c = null;
         // Get the Amazon RDS credentials from AWS Secrets Manager.
         Gson gson = new Gson();
@@ -179,6 +182,7 @@ public class DatabaseService {
             ps.execute();
         } catch (SQLException | ParseException e) {
             log.error("inject new item failed. Error: {}", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "inject new item failed: " + e.getMessage());
         } finally {
             connectionHelper.close(c);
         }

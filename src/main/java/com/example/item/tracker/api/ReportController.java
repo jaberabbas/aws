@@ -6,10 +6,14 @@ package com.example.item.tracker.api;
 import com.example.item.tracker.component.DatabaseService;
 import com.example.item.tracker.component.SendMessages;
 import com.example.item.tracker.component.WriteExcel;
+import com.example.item.tracker.model.CustomException;
+import com.example.item.tracker.model.ErrorMessage;
 import com.example.item.tracker.model.WorkItem;
 import com.google.gson.Gson;
 import jxl.write.WriteException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,6 +25,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("api/items:report")
@@ -38,17 +43,18 @@ public class ReportController {
     }
 
     @PostMapping("")
-    public String sendReport(@RequestBody Map<String, String> body) {
-        List<WorkItem> list = dbService.getItemsDataSQLReport(-1);
-        Gson gson = new Gson();
+    public ResponseEntity<?> sendReport(@RequestBody Map<String, String> body) {
+        List<WorkItem> list = null;
         try {
+            list = dbService.getItemsDataSQLReport(-1);
             InputStream is = writeExcel.write(list);
             sm.sendReport(is, body.get("email"));
-            return gson.toJson("ok");
-
-        } catch (IOException | WriteException e) {
-            e.printStackTrace();
+        } catch (CustomException e) {
+            return ResponseEntity.badRequest().body(new ErrorMessage(e.getCode(), e.getMessage(), e.getSubCode(), e.getDetails()));
         }
-        return gson.toJson("error");
+        Gson gson = new Gson();
+        return ResponseEntity.ok("ok");
+
+        //return gson.toJson("error");
     }
 }

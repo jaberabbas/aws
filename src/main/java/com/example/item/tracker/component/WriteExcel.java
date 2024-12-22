@@ -1,6 +1,9 @@
 package com.example.item.tracker.component;
 
+import com.example.item.tracker.model.CustomException;
+import com.example.item.tracker.model.ErrorCodes;
 import com.example.item.tracker.model.WorkItem;
+import jakarta.annotation.PostConstruct;
 import jxl.CellView;
 import jxl.Workbook;
 import jxl.WorkbookSettings;
@@ -42,70 +45,85 @@ import java.util.Properties;
 @Slf4j
 @Component
 public class WriteExcel {
-    static WritableCellFormat times;
-    static WritableCellFormat timesBoldUnderline;
+    private static WritableCellFormat timesBoldUnderline;
 
-    static {
+    // Initialization method
+    @PostConstruct
+    private void initializeFormats() {
         try {
             WritableFont times10pt = new WritableFont(WritableFont.TIMES, 10);
-            times = new WritableCellFormat(times10pt);
+            WritableCellFormat times = new WritableCellFormat(times10pt);
             times.setWrap(true);
 
-            WritableFont times10ptBoldUnderline = new WritableFont(WritableFont.TIMES, 10, WritableFont.BOLD, false,
-                    UnderlineStyle.SINGLE);
+            WritableFont times10ptBoldUnderline = new WritableFont(WritableFont.TIMES, 10, WritableFont.BOLD, false, UnderlineStyle.SINGLE);
             timesBoldUnderline = new WritableCellFormat(times10ptBoldUnderline);
             timesBoldUnderline.setWrap(true);
         } catch (WriteException e) {
-            log.error("Failed to to write to Excel. Error: {}", e.getMessage());
+            log.error("Failed to initialize Excel formats. Error: {}", e.getMessage());
         }
     }
 
-    public InputStream write(Iterable<WorkItem> items) throws IOException, WriteException {
+
+    public InputStream write(Iterable<WorkItem> items) throws CustomException {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         WorkbookSettings wbSettings = new WorkbookSettings();
         wbSettings.setLocale(new Locale("en", "US"));
 
-        WritableWorkbook workbook = Workbook.createWorkbook(os, wbSettings);
-        workbook.createSheet("Work Item Report", 0);
-        WritableSheet excelSheet = workbook.getSheet(0);
+        WritableWorkbook workbook = null;
+        try {
+            workbook = Workbook.createWorkbook(os, wbSettings);
+            workbook.createSheet("Work Item Report", 0);
+            WritableSheet excelSheet = workbook.getSheet(0);
 
-        addLabels(excelSheet);
-        fillContent(excelSheet, items);
+            addLabels(excelSheet);
+            fillContent(excelSheet, items);
 
-        workbook.write();
-        workbook.close();
+            workbook.write();
+            workbook.close();
+
+        } catch (IOException | WriteException e) {
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", e.getMessage());
+        }
 
         return new ByteArrayInputStream(os.toByteArray());
     }
 
-    private void addLabels(WritableSheet sheet) throws WriteException {
+    private void addLabels(WritableSheet sheet) throws CustomException {
         CellView cv = new CellView();
         cv.setFormat(timesBoldUnderline);
         cv.setAutosize(true);
-
         addCaption(sheet, 0, 0, "Writer");
         addCaption(sheet, 1, 0, "Date");
         addCaption(sheet, 2, 0, "Guide");
         addCaption(sheet, 3, 0, "Description");
         addCaption(sheet, 4, 0, "Status");
+
     }
 
-    private void addCaption(WritableSheet sheet, int column, int row, String s) throws WriteException {
+    private void addCaption(WritableSheet sheet, int column, int row, String s) throws CustomException {
         Label label = new Label(column, row, s, timesBoldUnderline);
         int cc = s.length();
         sheet.setColumnView(column, cc);
-        sheet.addCell(label);
+        try {
+            sheet.addCell(label);
+        } catch (WriteException e) {
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", e.getMessage());
+        }
     }
 
-    private void addField(WritableSheet sheet, int column, int row, String s) throws WriteException {
+    private void addField(WritableSheet sheet, int column, int row, String s) throws CustomException {
         Label label = new Label(column, row, s, timesBoldUnderline);
         int cc = s.length();
         cc = cc > 200 ? 150 : cc + 6;
         sheet.setColumnView(column, cc);
-        sheet.addCell(label);
+        try {
+            sheet.addCell(label);
+        } catch (WriteException e) {
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", e.getMessage());
+        }
     }
 
-    private void fillContent(WritableSheet sheet, Iterable<WorkItem> items) throws WriteException {
+    private void fillContent(WritableSheet sheet, Iterable<WorkItem> items) throws CustomException {
         int row = 2;
         for (WorkItem item : items) {
             addField(sheet, 0, row, item.getName());

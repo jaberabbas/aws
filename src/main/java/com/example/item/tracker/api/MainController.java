@@ -1,11 +1,11 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-
 package com.example.item.tracker.api;
 
 import com.example.item.tracker.component.DatabaseService;
+import com.example.item.tracker.model.CustomException;
+import com.example.item.tracker.model.ErrorMessage;
 import com.example.item.tracker.model.WorkItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,31 +34,38 @@ public class MainController {
     }
 
     @GetMapping("")
-    public List<WorkItem> getItems(@RequestParam(required = false) String archived) {
+    public ResponseEntity<?> getItems(@RequestParam(required = false) String archived) {
         Iterable<WorkItem> result;
-        if (archived != null && archived.trim().equalsIgnoreCase("false")) {
-            result = dbService.getItemsDataSQLReport(0);
-        } else if (archived != null && archived.trim().equalsIgnoreCase("true")) {
-            result = dbService.getItemsDataSQLReport(1);
-        } else {
-            result = dbService.getItemsDataSQLReport(-1);
+        try {
+            if (archived != null && archived.trim().equalsIgnoreCase("false")) {
+                result = dbService.getItemsDataSQLReport(0);
+            } else if (archived != null && archived.trim().equalsIgnoreCase("true")) {
+                result = dbService.getItemsDataSQLReport(1);
+            } else {
+                result = dbService.getItemsDataSQLReport(-1);
+            }
+        } catch (CustomException e) {
+            return ResponseEntity.badRequest().body(new ErrorMessage(e.getCode(), e.getMessage(), e.getSubCode(), e.getDetails()));
         }
-
-        return StreamSupport.stream(result.spliterator(), false)
-                .toList();
+        return ResponseEntity.ok().body(StreamSupport.stream(result.spliterator(), false)
+                .toList());
     }
 
     // Notice the : character which is used for custom methods. More information can
     // be found here:
     // https://cloud.google.com/apis/design/custom_methods
     @PutMapping("{id}:archive")
-    public String modUser(@PathVariable String id) {
-        dbService.flipItemArchive(id);
-        return id + " was archived";
+    public ResponseEntity<?> modUser(@PathVariable String id) {
+        try {
+            dbService.flipItemArchive(id);
+        } catch (CustomException e) {
+            return ResponseEntity.badRequest().body(new ErrorMessage(e.getCode(), e.getMessage(), e.getSubCode(), e.getDetails()));
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("")
-    public List<WorkItem> addItem(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<?> addItem(@RequestBody Map<String, String> payload) {
         String name = payload.get("name");
         String guide = payload.get("guide");
         String description = payload.get("description");
@@ -73,9 +80,14 @@ public class MainController {
         item.setName(name);
         item.setDate(date);
         item.setStatus(status);
-        dbService.injectNewSubmission(item);
-        Iterable<WorkItem> result = dbService.getItemsDataSQLReport(0);
-        return StreamSupport.stream(result.spliterator(), false)
-                .toList();
+        Iterable<WorkItem> result;
+        try {
+            dbService.injectNewSubmission(item);
+            result = dbService.getItemsDataSQLReport(0);
+        } catch (CustomException e) {
+            return ResponseEntity.badRequest().body(new ErrorMessage(e.getCode(), e.getMessage(), e.getSubCode(), e.getDetails()));
+        }
+        return ResponseEntity.ok(StreamSupport.stream(result.spliterator(), false)
+                .toList());
     }
 }

@@ -1,5 +1,7 @@
 package com.example.item.tracker.component;
 
+import com.example.item.tracker.model.CustomException;
+import com.example.item.tracker.model.ErrorCodes;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Component;
@@ -30,45 +32,73 @@ import java.util.Properties;
 @Component
 public class SendMessages {
 
-    public void sendReport(InputStream is, String emailAddress) throws IOException {
-        byte[] fileContent = IOUtils.toByteArray(is);
-
+    public void sendReport(InputStream is, String emailAddress) throws CustomException {
         try {
+            byte[] fileContent = IOUtils.toByteArray(is);
             send(makeEmail(fileContent, emailAddress));
-        } catch (MessagingException e) {
+        } catch (IOException e) {
             log.error("Failed to send report. Error: {}", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "Failed to send report: ", e.getMessage());
         }
     }
 
-    public void send(MimeMessage message) throws MessagingException, IOException {
+    public void send(MimeMessage message) throws CustomException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        message.writeTo(outputStream);
+        try {
+            message.writeTo(outputStream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (MessagingException e) {
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", e.getMessage());
+        }
         ByteBuffer buf = ByteBuffer.wrap(outputStream.toByteArray());
         byte[] arr = new byte[buf.remaining()];
         buf.get(arr);
         SdkBytes data = SdkBytes.fromByteArray(arr);
         RawMessage rawMessage = RawMessage.builder().data(data).build();
         SendRawEmailRequest rawEmailRequest = SendRawEmailRequest.builder().rawMessage(rawMessage).build();
-
-        try {
-            log.info("Attempting to send an email through Amazon SES...");
-            SesClient client = SesClient.builder().region(Region.EU_WEST_3).build();
+        log.info("Attempting to send an email through Amazon SES...");
+        try (SesClient client = SesClient.builder().region(Region.EU_WEST_3).build()) {
             client.sendRawEmail(rawEmailRequest);
         } catch (SesException e) {
             log.error("Failed to send email. Error: {}", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "Failed to send email: ", e.getMessage());
         }
     }
 
-    private MimeMessage makeEmail(byte[] attachment, String emailAddress) throws MessagingException {
+    private MimeMessage makeEmail(byte[] attachment, String emailAddress) throws CustomException {
         Session session = Session.getDefaultInstance(new Properties());
         MimeMessage message = new MimeMessage(session);
 
         String subject = "Weekly AWS Status Report";
-        message.setSubject(subject, "UTF-8");
-        String sender = "jaber.h.abbas@gmail.com";
-        message.setFrom(new InternetAddress(sender));
-        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(emailAddress));
+        try {
+            message.setSubject(subject, "UTF-8");
+            String sender = "jaber.h.abbas@gmail.com";
+            message.setFrom(new InternetAddress(sender));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(emailAddress));
 
+            MimeBodyPart wrap = getMimeBodyPart();
+
+            MimeMultipart msg = new MimeMultipart("mixed");
+            msg.addBodyPart(wrap);
+
+            MimeBodyPart att = new MimeBodyPart();
+            DataSource fds = new ByteArrayDataSource(attachment, "application/vnc.openxmlformats-officedocument.spreadsheetml.sheet");
+            att.setDataHandler(new DataHandler(fds));
+            String attachmentName = "WorkReport.xls";
+            att.setFileName(attachmentName);
+
+            msg.addBodyPart(att);
+            message.setContent(msg);
+
+        } catch (MessagingException e) {
+            log.error("MessagingException while making email. Error {} ", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "MessagingException while making email: " + e.getMessage());
+        }
+        return message;
+    }
+
+    private static MimeBodyPart getMimeBodyPart() throws MessagingException {
         MimeBodyPart textPart = new MimeBodyPart();
         String bodyText = "Hello,\r\n\r\nPlease see the attached file for a weekly update.";
         textPart.setContent(bodyText, "text/plain; charset=UTF-8");
@@ -83,19 +113,6 @@ public class SendMessages {
 
         MimeBodyPart wrap = new MimeBodyPart();
         wrap.setContent(msgBody);
-
-        MimeMultipart msg = new MimeMultipart("mixed");
-        msg.addBodyPart(wrap);
-
-        MimeBodyPart att = new MimeBodyPart();
-        DataSource fds = new ByteArrayDataSource(attachment,
-                "application/vnc.openxmlformats-officedocument.spreadsheetml.sheet");
-        att.setDataHandler(new DataHandler(fds));
-        String attachmentName = "WorkReport.xls";
-        att.setFileName(attachmentName);
-
-        msg.addBodyPart(att);
-        message.setContent(msg);
-        return message;
+        return wrap;
     }
 }
