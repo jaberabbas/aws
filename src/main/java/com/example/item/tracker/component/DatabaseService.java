@@ -6,6 +6,7 @@ import com.example.item.tracker.model.ErrorCodes;
 import com.example.item.tracker.model.User;
 import com.example.item.tracker.model.WorkItem;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -14,12 +15,10 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -47,7 +46,7 @@ public class DatabaseService {
     private String getSecretValues() {
         // Get the Amazon RDS creds from Secrets Manager.
         SecretsManagerClient secretClient = getSecretClient();
-        String secretName = "dev/postgres/connection";
+        String secretName = "dev/postgres/connectiondb";
 
         GetSecretValueRequest valueRequest = GetSecretValueRequest.builder()
                 .secretId(secretName)
@@ -58,7 +57,7 @@ public class DatabaseService {
     }
 
     // Set the specified item to archive.
-    public void flipItemArchive(String id) throws CustomException {
+    public void flipItemArchive(int id) throws CustomException {
         Connection c = null;
         String query;
         // Get the Amazon RDS credentials from AWS Secrets Manager.
@@ -67,7 +66,6 @@ public class DatabaseService {
         try {
             c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             query = "update work set archive = ? where idwork ='" + id + "' ";
-            assert c != null;
             PreparedStatement updateForm = c.prepareStatement(query);
             updateForm.setInt(1, 1);
             updateForm.execute();
@@ -81,7 +79,7 @@ public class DatabaseService {
     }
 
     // Get Items data from postgress.
-    public List<WorkItem> getItemsDataSQLReport(int flag) throws CustomException {
+    public List<WorkItem> getItemsDataSQLReport(String archived) throws CustomException {
         Connection c = null;
         List<WorkItem> itemList = new ArrayList<>();
         String query;
@@ -95,28 +93,24 @@ public class DatabaseService {
             c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
             ResultSet rs = null;
             PreparedStatement pstmt = null;
-            if (flag == 0) {
+            if (archived != null && archived.trim().equalsIgnoreCase("false")) {
                 // Retrieves active data database
                 int arch = 0;
                 query = "Select idwork,username,date,description,guide,status,archive FROM work where archive=?;";
-                assert c != null;
                 pstmt = c.prepareStatement(query);
                 //pstmt.setString(1, username);
                 pstmt.setInt(1, arch);
                 rs = pstmt.executeQuery();
-            } else if (flag == 1) {
+            } else if (archived != null && archived.trim().equalsIgnoreCase("true")) {
                 // Retrieves archive data from database
                 int arch = 1;
                 query = "Select idwork,username,date,description,guide,status,archive  FROM work where archive=?;";
-                assert c != null;
                 pstmt = c.prepareStatement(query);
-                //pstmt.setString(1, username);
                 pstmt.setInt(1, arch);
                 rs = pstmt.executeQuery();
             } else {
                 // Retrieves all data from database
                 query = "Select idwork,username,date,description,guide,status, archive FROM work";
-                assert c != null;
                 pstmt = c.prepareStatement(query);
                 rs = pstmt.executeQuery();
             }
@@ -144,47 +138,88 @@ public class DatabaseService {
         }
     }
 
-    // Inject a new submission.
-    public void injectNewSubmission(WorkItem item) throws CustomException {
+    public WorkItem getItemDataSQLReport(int id) throws CustomException {
         Connection c = null;
+        String query;
+        WorkItem workItem = null;
         // Get the Amazon RDS credentials from AWS Secrets Manager.
         Gson gson = new Gson();
         User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
-
         try {
             c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
-            PreparedStatement ps;
+            ResultSet rs = null;
+            PreparedStatement pstmt = null;
+            query = "Select idwork,username,date,description,guide,status,archive FROM work where idwork=?;";
+            pstmt = c.prepareStatement(query);
+            //pstmt.setString(1, username);
+            pstmt.setInt(1, id);
+            rs = pstmt.executeQuery();
 
-            // Convert rev to int.
-            String name = item.getName();
-            String guide = item.getGuide();
-            String description = item.getDescription();
-            String status = item.getStatus();
+            while (rs.next()) {
+                workItem = new WorkItem();
+                workItem.setId(rs.getString(1));
+                workItem.setName(rs.getString(2));
+                workItem.setDate(rs.getDate(3).toString().trim());
+                workItem.setDescription(rs.getString(4));
+                workItem.setGuide(rs.getString(5));
+                workItem.setStatus(rs.getString(6));
+                workItem.setArchived(rs.getBoolean(7));
 
-            // Date conversion.
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-            LocalDateTime now = LocalDateTime.now();
-            String sDate1 = dtf.format(now);
-            Date date1 = new SimpleDateFormat("yyyy/MM/dd").parse(sDate1);
-            java.sql.Date sqlDate = new java.sql.Date(date1.getTime());
+            }
+            return workItem;
 
-            // Inject an item into the system.
-            String insert = "INSERT INTO work (username,date,description, guide, status, archive) VALUES(?, ?,?,?,?,?);";
-            assert c != null;
-            ps = c.prepareStatement(insert);
-            //ps.setString(1, workId);
-            ps.setString(1, name);
-            ps.setDate(2, sqlDate);
-            ps.setString(3, description);
-            ps.setString(4, guide);
-            ps.setString(5, status);
-            ps.setInt(6, 0);
-            ps.execute();
-        } catch (SQLException | ParseException e) {
-            log.error("inject new item failed. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "inject new item failed: " + e.getMessage());
+        } catch (SQLException e) {
+            log.error("getItemDataSQLReport failed. Error: {}", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "getItemsDataSQLReport failed: ", e.getMessage());
         } finally {
             connectionHelper.close(c);
         }
     }
+
+    // Inject a new submission.
+    public WorkItem injectNewSubmission(WorkItem item) throws CustomException {
+        Connection c = null;
+        Gson gson = new Gson();
+        User user = gson.fromJson(String.valueOf(getSecretValues()), User.class);
+        try {
+            c = connectionHelper.getConnection(user.getHost(), user.getUsername(), user.getPassword());
+            java.sql.Date sqlDate = java.sql.Date.valueOf(LocalDate.now());
+
+            // Prepare SQL
+            String insertQuery = "INSERT INTO work (username, date, description, guide, status, archive) VALUES (?, ?, ?, ?, ?, ?)";
+
+            try (PreparedStatement ps = c.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, item.getName());
+                ps.setDate(2, sqlDate);
+                ps.setString(3, item.getDescription());
+                ps.setString(4, item.getGuide());
+                ps.setString(5, item.getStatus());
+                ps.setInt(6, 0);
+
+                ps.executeUpdate();
+
+                // Retrieve generated keys (e.g., ID)
+                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        item.setId(String.valueOf(generatedKeys.getLong(1)));
+                    } else {
+                        throw new CustomException(ErrorCodes.TEC001.getCode(), "No ID returned", "", "Failed to retrieve generated ID.");
+                    }
+                }
+            }
+
+            // Return the updated WorkItem with the generated ID
+            return item;
+
+        } catch (SQLException e) {
+            log.error("inject new item failed.", e);
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "SQL Error: " + e.getMessage());
+        } catch (JsonSyntaxException e) {
+            log.error("Failed to parse secret values.", e);
+            throw new CustomException(ErrorCodes.TEC001.getCode(), "JSON parsing error", "", e.getMessage());
+        } finally {
+            connectionHelper.close(c);
+        }
+    }
+
 }

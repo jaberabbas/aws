@@ -23,6 +23,11 @@ public class ConnectionHelper {
             log.error("Failed to connect to the database. Error: {}", e.getMessage());
             throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Failed to connect to the database: " + e.getMessage());
         }
+        if (connection == null) {
+            log.error("Database connection is null. Failed to obtain a connection");
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Database connection is null. Failed to obtain a connection");
+        }
+
         return connection;
     }
 

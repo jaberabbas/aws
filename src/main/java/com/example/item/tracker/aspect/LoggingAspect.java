@@ -34,7 +34,7 @@ public class LoggingAspect {
     /**
      * Pointcut that matches all Spring beans in the application's main packages.
      */
-    @Pointcut("execution(* com.example.item.tracker..*(..))")
+    @Pointcut("within(com.example.item.tracker..*)")
     public void applicationPackagePointcut() {
         // Method is empty as this is just a Pointcut, the implementations are in the advices.
     }
@@ -58,7 +58,7 @@ public class LoggingAspect {
      * @throws Throwable throws IllegalArgumentException
      */
     @Around("applicationPackagePointcut()")
-    public Object logAround(ProceedingJoinPoint joinPoint) throws CustomException {
+    public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
         log.debug("Enter: {}.{}() with argument[s] = {}", joinPoint.getSignature().getDeclaringTypeName(), joinPoint.getSignature().getName(), Arrays.toString(joinPoint.getArgs()));
 
         try {
@@ -68,7 +68,7 @@ public class LoggingAspect {
             return result;
         } catch (Throwable e) {
             log.error("Illegal argument: {} in {}.{}()", Arrays.toString(joinPoint.getArgs()), joinPoint.getSignature().getDeclaringTypeName(), joinPoint.getSignature().getName());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Illegal argument: " + e.getMessage());
+            throw e;
         }
     }
 
