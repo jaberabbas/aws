@@ -21,7 +21,7 @@ public class ConnectionHelper {
             connection = DriverManager.getConnection(url2, user, password);
         } catch (SQLException e) {
             log.error("Failed to connect to the database. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Failed to connect to the database: " + e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Failed to connect to the database: " + e.getMessage(), e);
         }
         if (connection == null) {
             log.error("Database connection is null. Failed to obtain a connection");
@@ -39,7 +39,7 @@ public class ConnectionHelper {
 
         } catch (SQLException e) {
             log.error("Failed to close database connection. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Failed to close database connection: " + e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "Failed to close database connection: " + e.getMessage(), e);
         }
     }
 }

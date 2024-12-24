@@ -72,7 +72,7 @@ public class DatabaseService {
 
         } catch (SQLException e) {
             log.error("flipItemArchive failed. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "flipItemArchive failed: ", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "flipItemArchive failed: ", e.getMessage(), e);
         } finally {
             connectionHelper.close(c);
         }
@@ -132,7 +132,7 @@ public class DatabaseService {
 
         } catch (SQLException e) {
             log.error("getItemsDataSQLReport failed. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "getItemsDataSQLReport failed: ", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "getItemsDataSQLReport failed: ", e.getMessage(), e);
         } finally {
             connectionHelper.close(c);
         }
@@ -170,7 +170,7 @@ public class DatabaseService {
 
         } catch (SQLException e) {
             log.error("getItemDataSQLReport failed. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "getItemsDataSQLReport failed: ", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "getItemsDataSQLReport failed: ", e.getMessage(), e);
         } finally {
             connectionHelper.close(c);
         }
@@ -213,10 +213,10 @@ public class DatabaseService {
 
         } catch (SQLException e) {
             log.error("inject new item failed.", e);
-            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "SQL Error: " + e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), ErrorCodes.TEC001.getDesc(), "", "SQL Error: " + e.getMessage(), e);
         } catch (JsonSyntaxException e) {
             log.error("Failed to parse secret values.", e);
-            throw new CustomException(ErrorCodes.TEC001.getCode(), "JSON parsing error", "", e.getMessage());
+            throw new CustomException(ErrorCodes.TEC001.getCode(), "JSON parsing error", "", e.getMessage(), e);
         } finally {
             connectionHelper.close(c);
         }

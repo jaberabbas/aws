@@ -18,8 +18,15 @@ public class CustomException extends Exception{
     public CustomException(String message){
         super(message);
     }
-
     public CustomException(String message, Throwable throwable){
         super(message, throwable);
+        this.message = message;
+    }
+    public CustomException(String code, String message, String subCode, String details, Throwable throwable){
+        super(message, throwable);
+        this.code = code;
+        this.message = message;
+        this.subCode = subCode;
+        this.details = details;
     }
 }
