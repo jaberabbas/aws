@@ -44,7 +44,6 @@ public class MainController {
         try {
             result = dbService.getItemsDataSQLReport(archived);
         } catch (CustomException e) {
-            log.error("CustomException: " + e.getCode() + " " + e.getMessage()+ " " + e.getSubCode() + " " + e.getDetails() );
             return getErrorMessageResponseEntity(e);
         }
         return ResponseEntity.ok().body(StreamSupport.stream(result.spliterator(), false)
@@ -86,7 +85,6 @@ public class MainController {
     }
 
     private ResponseEntity<ErrorMessage> getErrorMessageResponseEntity(CustomException e) {
-        log.error("Inside getErrorMessageResponseEntity: " + e.getCode() + " " + e.getMessage()+ " " + e.getSubCode() + " " + e.getDetails() );
         if (ErrorCodes.TEC001.getCode().equalsIgnoreCase(e.getCode()))
             return ResponseEntity.internalServerError().body(new ErrorMessage(e.getCode(), e.getMessage(), e.getSubCode(), e.getDetails()));
         else
