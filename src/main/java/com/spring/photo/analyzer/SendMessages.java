@@ -48,7 +48,7 @@ public class SendMessages {
         // The subject line for the email.
         String subject = "Analyzed photos report";
         message.setSubject(subject, "UTF-8");
-        String sender = "jaber.h.abbas@gmail.com";
+        String sender = "email here";
         message.setFrom(new InternetAddress(sender));
         message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(emailAddress));
 
