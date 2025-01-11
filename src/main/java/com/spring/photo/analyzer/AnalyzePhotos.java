@@ -40,6 +40,7 @@ public class AnalyzePhotos {
                     .maxLabels(10)
                     .build();
 
+            System.out.println("detecting labels async ...");
             CompletableFuture<DetectLabelsResponse> futureGet = rekAsyncClient.detectLabels(detectLabelsRequest);
             futureGet.whenComplete((resp, err) -> {
                 try {

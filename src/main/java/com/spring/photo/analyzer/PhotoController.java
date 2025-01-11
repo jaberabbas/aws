@@ -20,7 +20,7 @@ import java.util.*;
 public class PhotoController {
 
     // Change to your Bucket Name
-    private final String bucketName = "myphotobucketjab";
+    private final String bucketName = "bucket-jaber";
 
     private final S3Service s3Service;
     private final AnalyzePhotos analyzePhotos;
