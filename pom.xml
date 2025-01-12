@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.spring.sns</groupId>
-	<artifactId>spring-sns-ansync</artifactId>
+	<artifactId>spring-sns-async</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>spring-sns-ansync</name>
+	<name>spring-sns-async</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
 	<licenses>
