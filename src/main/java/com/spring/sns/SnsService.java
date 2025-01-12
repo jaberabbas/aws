@@ -188,7 +188,7 @@ public class SnsService {
         final AtomicReference<String> reference = new AtomicReference<>();
         Region region = Region.EU_WEST_3;
         TranslateAsyncClient translateClient = TranslateAsyncClient.builder()
-                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .region(region)
                 .build();
 
